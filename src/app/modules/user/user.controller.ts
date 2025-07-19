@@ -22,7 +22,7 @@ import { sendResponse } from "../../utils/sendResponse";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const createUser = catchAsync(async(req: Request, res: Response, next: NextFunction)=>{
-    const user =await UserServices.createUser(req.body)
+    const user = await UserServices.createUser(req.body)
 
     // res.status(httpStatus.CREATED).json({
     //         message: "User created successfully",
