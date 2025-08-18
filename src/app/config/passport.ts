@@ -1,10 +1,12 @@
+// import  httpStatus  from 'http-status-codes';
 import  bcryptjs  from 'bcryptjs';
 import passport from "passport";
 import { Strategy as  GoogleStrategy, Profile, VerifyCallback } from "passport-google-oauth20";
 import { envVars } from "./env";
 import { User } from "../modules/user/user.model";
-import { Role } from "../modules/user/user.interface";
+import { IsActive, Role } from "../modules/user/user.interface";
 import { Strategy as LocalStrategy } from "passport-local";
+// import AppError from '../errorHelpers/AppError';
 
 passport.use(
     new LocalStrategy({
@@ -17,6 +19,18 @@ passport.use(
      if(!isUserExist){
         return done(null, false, {message: "User does not exist"})
      }
+      if(!isUserExist.isVerified){
+                //  throw new AppError(httpStatus.BAD_REQUEST, "User is not verified")
+                return done("User is not verified")
+              }
+       if(isUserExist.isActive === IsActive.BLOCKED || isUserExist.isActive === IsActive.INACTIVE){
+                //  throw new AppError(httpStatus.BAD_REQUEST, `User is ${isUserExist.isActive}`)
+                return done(`User is ${isUserExist.isActive}`)
+              }
+               if(isUserExist.isDeleted){
+                //  throw new AppError(httpStatus.BAD_REQUEST, "User is deleted")
+                return done("User is deleted")
+              }
 
      const isGoogleAuthenticated = isUserExist.auths.some(providerObjects => providerObjects.provider == "google")
 
@@ -32,6 +46,7 @@ passport.use(
 
      return done(null, isUserExist)
         } catch (error) {
+            // eslint-disable-next-line no-console
             console.log(error);
             done(error)
             
@@ -40,43 +55,64 @@ passport.use(
 )
 
 passport.use(
-    new GoogleStrategy ({
-        clientID: envVars.GOOGLE_CLIENT_ID,
-        clientSecret: envVars.GOOGLE_CLIENT_SECRET,
-        callbackURL: envVars.GOOGLE_CALLBACK_URL
-    }, async (accessToken: string, refreshToken: string, profile: Profile, done: VerifyCallback) =>{
-        try {
-            const email = profile.emails?.[0].value
+    new GoogleStrategy(
+        {
+            clientID: envVars.GOOGLE_CLIENT_ID,
+            clientSecret: envVars.GOOGLE_CLIENT_SECRET,
+            callbackURL: envVars.GOOGLE_CALLBACK_URL
+        }, async (accessToken: string, refreshToken: string, profile: Profile, done: VerifyCallback) => {
 
-            if(!email){
-                return done(null, false, {mesasge: "No email found"})
+            try {
+                const email = profile.emails?.[0].value;
+
+                if (!email) {
+                    return done(null, false, { mesaage: "No email found" })
+                }
+
+                let isUserExist = await User.findOne({ email })
+                if (isUserExist && !isUserExist.isVerified) {
+                    // throw new AppError(httpStatus.BAD_REQUEST, "User is not verified")
+                    // done("User is not verified")
+                    return done(null, false, { message: "User is not verified" })
+                }
+
+                if (isUserExist && (isUserExist.isActive === IsActive.BLOCKED || isUserExist.isActive === IsActive.INACTIVE)) {
+                    // throw new AppError(httpStatus.BAD_REQUEST, `User is ${isUserExist.isActive}`)
+                    done(`User is ${isUserExist.isActive}`)
+                }
+
+                if (isUserExist && isUserExist.isDeleted) {
+                    return done(null, false, { message: "User is deleted" })
+                    // done("User is deleted")
+                }
+
+                if (!isUserExist) {
+                    isUserExist = await User.create({
+                        email,
+                        name: profile.displayName,
+                        picture: profile.photos?.[0].value,
+                        role: Role.USER,
+                        isVerified: true,
+                        auths: [
+                            {
+                                provider: "google",
+                                providerId: profile.id
+                            }
+                        ]
+                    })
+                }
+
+                return done(null, isUserExist)
+
+
+            } catch (error) {
+                console.log("Google Strategy Error", error);
+                return done(error)
             }
-
-            let user = await User.findOne({email})
-
-            if(!user){
-                user = await User.create({
-                    email,
-                    name: profile.displayName,
-                    picture: profile.photos?.[0].value,
-                    role: Role.USER,
-                    isVerified: true,
-                    auths: [
-                        {
-                            provider: "google",
-                            providerId: profile.id
-                        }
-                    ]
-                })
-            }
-            return done(null, user)
-        } catch (error) {
-            console.log("Google Strategy error", error);
-            return done(error)
-            
         }
-    })
+    )
 )
+
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 passport.serializeUser((user: any, done: (err: any, id?: unknown | undefined) => void)=>{

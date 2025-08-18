@@ -4,9 +4,14 @@ import { NextFunction, Request, Response } from "express"
 import { sendResponse } from "../../utils/sendResponse"
 import { catchAsync } from '../../utils/catchAsync';
 import { TourServices } from './tour.service';
+import { ITour } from './tour.interface';
 
 const createTour = catchAsync(async(req: Request, res: Response, next: NextFunction) =>{
-    const tour = await TourServices.createTour(req.body)
+     const payload: ITour = {
+            ...req.body,
+            images: (req.files as Express.Multer.File[]).map(file => file.path)
+        }
+    const tour = await TourServices.createTour(payload)
 
     sendResponse(res, {
         success: true,

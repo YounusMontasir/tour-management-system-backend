@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import  httpStatus  from 'http-status-codes';
 import { NextFunction, Request, Response } from "express"
 import { AuthServices } from "./auth.service"
@@ -10,7 +11,7 @@ import { createUserTokens } from '../../utils/userTokens';
 import { envVars } from '../../config/env';
 import passport from 'passport';
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+
 const credentialsLogin = catchAsync(async(req: Request, res: Response, next: NextFunction)=>{
     // const loginInfo = await AuthServices.credentialsLogin(req.body)
 
@@ -30,7 +31,7 @@ const credentialsLogin = catchAsync(async(req: Request, res: Response, next: Nex
 
         const userTokens =  await createUserTokens(user)
 
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
         const {password: pass, ...rest} = user.toObject()
 
         setAuthCookie(res, userTokens)
@@ -61,7 +62,7 @@ const credentialsLogin = catchAsync(async(req: Request, res: Response, next: Nex
     
 })
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+
 const getNewAccessToken = catchAsync(async(req: Request, res: Response, next: NextFunction)=>{
     const refreshToken = req.cookies.refreshToken
     const tokenInfo = await AuthServices.getNewAccessToken(refreshToken)
@@ -79,7 +80,7 @@ const getNewAccessToken = catchAsync(async(req: Request, res: Response, next: Ne
     })
 })
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+
 const logout = catchAsync(async(req: Request, res: Response, next: NextFunction)=>{
    
 
@@ -102,24 +103,66 @@ const logout = catchAsync(async(req: Request, res: Response, next: NextFunction)
     })
 })
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const resetPassword = catchAsync(async(req: Request, res: Response, next: NextFunction)=>{
-   const newPassword = req.body.newPassword
-   const oldPassword = req.body.oldPassword
-   const decodedToken = req.user
 
-   await AuthServices.resetPassword(oldPassword, newPassword, decodedToken as JwtPayload)
+const changePassword = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+
+    const newPassword = req.body.newPassword;
+    const oldPassword = req.body.oldPassword;
+    const decodedToken = req.user
+
+    await AuthServices.changePassword(oldPassword, newPassword, decodedToken as JwtPayload);
+
+    sendResponse(res, {
+        success: true,
+        statusCode: httpStatus.OK,
+        message: "Password Changed Successfully",
+        data: null,
+    })
+})
+const resetPassword = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+
+    const decodedToken = req.user
+
+    await AuthServices.resetPassword(req.body, decodedToken as JwtPayload);
+
+    sendResponse(res, {
+        success: true,
+        statusCode: httpStatus.OK,
+        message: "Password Changed Successfully",
+        data: null,
+    })
+})
+
+const setPassword = catchAsync(async(req: Request, res: Response, next: NextFunction)=>{
+    const decodedToken = req.user as JwtPayload
+   const {password} = req.body
+  
+
+   await AuthServices.setPassword(decodedToken.userId, password)
 
   
      sendResponse(res, {
         success: true,
         statusCode: httpStatus.OK,
-        message: "Password reset Successfully",
+        message: "Password change Successfully",
+        data: null,
+    })
+})
+const forgotPassword = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+
+
+    const { email } = req.body;
+
+    await AuthServices.forgotPassword(email);
+
+    sendResponse(res, {
+        success: true,
+        statusCode: httpStatus.OK,
+        message: "Email Sent Successfully",
         data: null,
     })
 })
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const googleCallbackController = catchAsync(async(req: Request, res: Response, next: NextFunction)=>{
 
     let redirectTo = req.query.state? req.query.state as string : ""
@@ -150,6 +193,9 @@ export const AuthControllers = {
     credentialsLogin,
     getNewAccessToken,
     logout,
+    changePassword,
     resetPassword,
+    setPassword,
+    forgotPassword,
     googleCallbackController
 }

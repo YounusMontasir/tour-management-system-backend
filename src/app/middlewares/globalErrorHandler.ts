@@ -12,6 +12,7 @@ import { TErrorSources } from "../interfaces/errorTypes";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
 export const globalErrorHandler = (err: any, req: Request, res: Response, next: NextFunction) =>{
     if(envVars.NODE_ENV === "development"){
+        // eslint-disable-next-line no-console
         console.log(err);
         
     }
